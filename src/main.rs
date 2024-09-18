@@ -1,9 +1,10 @@
-use std::io;
+use std::{default, io};
 use std::io::Write;
-use crossterm::{self, event, ExecutableCommand, terminal::{Clear, ClearType}, cursor, terminal};
-use std::time::Duration;
 use rand::Rng;
-
+use crossterm::{self, event, ExecutableCommand, terminal, cursor};
+use std::time::Duration;
+use crossterm::event::{Event, KeyCode, KeyEventKind};
+use crossterm::terminal::ClearType;
 
 
 
@@ -20,9 +21,7 @@ fn random(x: i16, y: i16) -> i16 { // Creates random number between x and y
 
 impl Game {
     fn draw(&self) {
-        let mut stdout = io::stdout();
-        stdout.execute(terminal::Clear(ClearType::All)).unwrap();
-        stdout.execute(cursor::MoveTo(0, 0)).unwrap();
+        let mut map : String = Default::default();
 
         for y in 0..24 {
             let y: u8 = y;
@@ -31,21 +30,18 @@ impl Game {
                 let x: u8 = x;
 
                 if self.obstacles[y as usize].contains(&x) {
-                    print!("#")
+                    map += "#"
                 }
                 else if self.coins[y as usize].contains(&x) {
-                    print!("•")
+                    map += "•"
                 } else {
-                    print!(" ")
+                    map += " "
                 }
             }
-            println!();
+            map += "\n"
         }
+        println!("{}", map);
     }
-}
-
-fn contains_array(vec: &Vec<[i16; 2]>, array: &[i16]) -> bool {
-    vec.iter().any(|&x| x == *array)
 }
 
 
@@ -103,7 +99,9 @@ fn prepare_game() {
         vec![]];
     let game = Game { obstacles: obstacle_coordinates, coins: coin_coordinates };
 
-    game.draw()
+    loop {
+        game.draw();
+    }
 }
 
 fn main() {
