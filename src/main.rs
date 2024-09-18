@@ -2,6 +2,7 @@ use std::{default, io};
 use std::io::Write;
 use rand::Rng;
 use crossterm::{self, event, ExecutableCommand, terminal, cursor};
+use std::thread::sleep;
 use std::time::Duration;
 use crossterm::event::{Event, KeyCode, KeyEventKind};
 use crossterm::terminal::ClearType;
@@ -22,6 +23,9 @@ fn random(x: i16, y: i16) -> i16 { // Creates random number between x and y
 impl Game {
     fn draw(&self) {
         let mut map : String = Default::default();
+        let mut stdout = io::stdout();
+        stdout.execute(terminal::Clear(ClearType::All)).unwrap();
+        stdout.execute(cursor::MoveTo(0, 0)).unwrap();
 
         for y in 0..24 {
             let y: u8 = y;
@@ -40,7 +44,9 @@ impl Game {
             }
             map += "\n"
         }
+        println!("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
         println!("{}", map);
+        stdout.flush().unwrap();
     }
 }
 
@@ -101,6 +107,7 @@ fn prepare_game() {
 
     loop {
         game.draw();
+        sleep(Duration::from_secs(1));
     }
 }
 
