@@ -1,11 +1,11 @@
 use std::{default, io};
 use std::io::Write;
 use rand::Rng;
-use crossterm::{cursor, event::{self, Event, KeyCode}, terminal, terminal::{disable_raw_mode, enable_raw_mode}, ExecutableCommand};
+use crossterm::{cursor, event::{self, Event, KeyCode}, execute, terminal, terminal::{disable_raw_mode, enable_raw_mode}, ExecutableCommand};
 use std::thread::sleep;
-use std::time::Duration;
-use crossterm::terminal::ClearType;
-
+use std::time::{Duration, Instant};
+use crossterm::event::KeyEventKind;
+use crossterm::terminal::{Clear, ClearType};
 
 
 struct Game {
@@ -24,9 +24,9 @@ impl Game {
     fn draw(&self) {
         let mut map : String = Default::default();
         let mut stdout = io::stdout();
-        stdout.execute(terminal::Clear(ClearType::All)).unwrap();
+        stdout.execute(Clear(ClearType::All)).unwrap();
         stdout.execute(cursor::MoveTo(0, 0)).unwrap();
-
+        print!("{esc}c", esc = 27 as char);
         for y in 0..24 {
             let y: u8 = y;
 
@@ -45,8 +45,7 @@ impl Game {
             }
             map += "\n"
         }
-        println!("{}", map);
-        stdout.flush().unwrap();
+        print!("{}", map);
     }
 
     fn move_up(&mut self) { self.player[1] -= 1 }
@@ -119,24 +118,34 @@ fn prepare_game() {
 
     enable_raw_mode().expect("Could not enable raw mode.");
 
+    let frame_duration = Duration::from_millis(8);
+    let mut last_frame = Instant::now();
+
     loop {
-        if event::poll(Duration::from_secs(1)).expect("Something went wrong.") {
+        if event::poll(Duration::from_millis(10)).expect("Something went wrong.") {
             if let Ok(Event::Key(key_event)) = event::read() {
-                match key_event.code {
-                    KeyCode::Char('q') => {
-                        println!("Exiting...");
-                        break;
+                if key_event.kind == KeyEventKind::Release {
+                    match key_event.code {
+                        KeyCode::Char('q') => {
+                            println!("Exiting...");
+                            break;
+                        }
+                        KeyCode::Char('w') => game.move_up(),
+                        KeyCode::Char('a') => game.move_left(),
+                        KeyCode::Char('s') => game.move_down(),
+                        KeyCode::Char('d') => game.move_right(),
+                        _ => {}
                     }
-                    KeyCode::Char('w') => { game.move_up() }
-                    KeyCode::Char('a') => { game.move_left() }
-                    KeyCode::Char('s') => { game.move_down() }
-                    KeyCode::Char('d') => { game.move_right() }
-                    _ => {}
                 }
             }
         }
-        game.draw();
+
+        if last_frame.elapsed() >= frame_duration {
+            game.draw();
+            last_frame = Instant::now();
+        }
     }
+
     disable_raw_mode().expect("Could not disable raw mode.");
 }
 
