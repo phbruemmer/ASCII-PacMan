@@ -1,17 +1,17 @@
 use std::{default, io};
 use std::io::Write;
 use rand::Rng;
-use crossterm::{self, event, ExecutableCommand, terminal, cursor};
+use crossterm::{cursor, event::{self, Event, KeyCode}, terminal, terminal::{disable_raw_mode, enable_raw_mode}, ExecutableCommand};
 use std::thread::sleep;
 use std::time::Duration;
-use crossterm::event::{Event, KeyCode, KeyEventKind};
 use crossterm::terminal::ClearType;
 
 
 
 struct Game {
     obstacles: [Vec<u8>; 24],
-    coins: [Vec<u8>; 24]
+    coins: [Vec<u8>; 24],
+    player: [u8; 2], // x y
 }
 
 fn random(x: i16, y: i16) -> i16 { // Creates random number between x and y
@@ -35,8 +35,9 @@ impl Game {
 
                 if self.obstacles[y as usize].contains(&x) {
                     map += "#"
-                }
-                else if self.coins[y as usize].contains(&x) {
+                } else if self.player == [x, y] {
+                    map += "@"
+                } else if self.coins[y as usize].contains(&x) {
                     map += "•"
                 } else {
                     map += " "
@@ -44,10 +45,14 @@ impl Game {
             }
             map += "\n"
         }
-        println!("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
         println!("{}", map);
         stdout.flush().unwrap();
     }
+
+    fn move_up(&mut self) { self.player[1] -= 1 }
+    fn move_left(&mut self) { self.player[0] -= 1 }
+    fn move_down(&mut self) { self.player[1] += 1 }
+    fn move_right(&mut self) { self.player[0] += 1 }
 }
 
 
@@ -103,12 +108,36 @@ fn prepare_game() {
         vec![2, 22, 26, 46],
         vec![2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46],
         vec![]];
-    let game = Game { obstacles: obstacle_coordinates, coins: coin_coordinates };
+
+    let player_coordinates: [u8; 2] = [24, 18]; // [x, y]
+
+    let mut game = Game {
+        obstacles: obstacle_coordinates,
+        coins: coin_coordinates,
+        player: player_coordinates
+    };
+
+    enable_raw_mode().expect("Could not enable raw mode.");
 
     loop {
+        if event::poll(Duration::from_secs(1)).expect("Something went wrong.") {
+            if let Ok(Event::Key(key_event)) = event::read() {
+                match key_event.code {
+                    KeyCode::Char('q') => {
+                        println!("Exiting...");
+                        break;
+                    }
+                    KeyCode::Char('w') => { game.move_up() }
+                    KeyCode::Char('a') => { game.move_left() }
+                    KeyCode::Char('s') => { game.move_down() }
+                    KeyCode::Char('d') => { game.move_right() }
+                    _ => {}
+                }
+            }
+        }
         game.draw();
-        sleep(Duration::from_secs(1));
     }
+    disable_raw_mode().expect("Could not disable raw mode.");
 }
 
 fn main() {
