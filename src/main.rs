@@ -1,8 +1,7 @@
-use std::{default, io};
+use std::{io};
 use std::io::Write;
 use rand::Rng;
-use crossterm::{cursor, event::{self, Event, KeyCode}, execute, terminal, terminal::{disable_raw_mode, enable_raw_mode}, ExecutableCommand};
-use std::thread::sleep;
+use crossterm::{cursor, event::{self, Event, KeyCode}, terminal::{disable_raw_mode, enable_raw_mode}, ExecutableCommand};
 use std::time::{Duration, Instant};
 use crossterm::event::KeyEventKind;
 use crossterm::terminal::{Clear, ClearType};
@@ -26,7 +25,6 @@ impl Game {
         let mut stdout = io::stdout();
         stdout.execute(Clear(ClearType::All)).unwrap();
         stdout.execute(cursor::MoveTo(0, 0)).unwrap();
-        print!("{esc}c", esc = 27 as char);
         for y in 0..24 {
             let y: u8 = y;
 
@@ -46,12 +44,19 @@ impl Game {
             map += "\n"
         }
         print!("{}", map);
+        stdout.flush().unwrap();
     }
 
-    fn move_up(&mut self) { self.player[1] -= 1 }
-    fn move_left(&mut self) { self.player[0] -= 1 }
-    fn move_down(&mut self) { self.player[1] += 1 }
-    fn move_right(&mut self) { self.player[0] += 1 }
+    fn check_position(cur_pos: [u8; 2], obstacles: [Vec<u8>; 24]) -> bool {
+        let x = cur_pos[0] as usize;
+        let y = cur_pos[1] as usize;
+        !obstacles[y].contains(&(x as u8))
+    }
+
+    fn move_up(&mut self) { if self.check_position([self.player[0] , self.player[1] - 1], self.obstacles.clone()) { self.player[1] -= 1 }}
+    fn move_left(&mut self) { if self.check_position([self.player[0] - 1, self.player[1]], self.obstacles.clone()) { self.player[0] -= 1 }}
+    fn move_down(&mut self) { if self.check_position([self.player[0] , self.player[1] + 1], self.obstacles.clone()) { self.player[1] += 1 }}
+    fn move_right(&mut self) { if self.check_position([self.player[0] + 1, self.player[1]], self.obstacles.clone()) { self.player[0] += 1 }}
 }
 
 
@@ -118,11 +123,11 @@ fn prepare_game() {
 
     enable_raw_mode().expect("Could not enable raw mode.");
 
-    let frame_duration = Duration::from_millis(8);
+    let frame_duration = Duration::from_millis(100);
     let mut last_frame = Instant::now();
 
     loop {
-        if event::poll(Duration::from_millis(10)).expect("Something went wrong.") {
+        if event::poll(Duration::from_millis(1)).expect("Something went wrong.") {
             if let Ok(Event::Key(key_event)) = event::read() {
                 if key_event.kind == KeyEventKind::Release {
                     match key_event.code {
