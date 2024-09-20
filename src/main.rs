@@ -18,6 +18,12 @@ fn random(x: i16, y: i16) -> i16 { // Creates random number between x and y
     rng.gen_range(x..y)
 }
 
+fn check_position(cur_pos: [u8; 2], obstacles: [Vec<u8>; 24]) -> bool {
+    let x = cur_pos[0] as usize;
+    let y = cur_pos[1] as usize;
+    !obstacles[y].contains(&(x as u8))
+}
+
 
 impl Game {
     fn draw(&self) {
@@ -47,16 +53,10 @@ impl Game {
         stdout.flush().unwrap();
     }
 
-    fn check_position(cur_pos: [u8; 2], obstacles: [Vec<u8>; 24]) -> bool {
-        let x = cur_pos[0] as usize;
-        let y = cur_pos[1] as usize;
-        !obstacles[y].contains(&(x as u8))
-    }
-
-    fn move_up(&mut self) { if self.check_position([self.player[0] , self.player[1] - 1], self.obstacles.clone()) { self.player[1] -= 1 }}
-    fn move_left(&mut self) { if self.check_position([self.player[0] - 1, self.player[1]], self.obstacles.clone()) { self.player[0] -= 1 }}
-    fn move_down(&mut self) { if self.check_position([self.player[0] , self.player[1] + 1], self.obstacles.clone()) { self.player[1] += 1 }}
-    fn move_right(&mut self) { if self.check_position([self.player[0] + 1, self.player[1]], self.obstacles.clone()) { self.player[0] += 1 }}
+    fn move_up(&mut self) { if check_position([self.player[0] , self.player[1] - 1], self.obstacles.clone()) { self.player[1] -= 1 }}
+    fn move_left(&mut self) { if check_position([self.player[0] - 1, self.player[1]], self.obstacles.clone()) { self.player[0] -= 1 }}
+    fn move_down(&mut self) { if check_position([self.player[0] , self.player[1] + 1], self.obstacles.clone()) { self.player[1] += 1 }}
+    fn move_right(&mut self) { if check_position([self.player[0] + 1, self.player[1]], self.obstacles.clone()) { self.player[0] += 1 }}
 }
 
 
