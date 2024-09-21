@@ -5,7 +5,6 @@ use crossterm::{cursor, event::{self, Event, KeyCode}, terminal::{disable_raw_mo
 use std::time::{Duration, Instant};
 use crossterm::event::KeyEventKind;
 use colored::*;
-use crossterm::style::Stylize;
 use crossterm::terminal::{Clear, ClearType};
 
 
@@ -126,7 +125,7 @@ impl Game {
         stdout.execute(Clear(ClearType::All)).unwrap();
         stdout.execute(cursor::MoveTo(0, 0)).unwrap();
         stdout.flush().unwrap();
-        for i in 0..12 {
+        for _i in 0..12 {
             thread::sleep(Duration::from_millis(100));
             println!("{}", Colorize::bright_blue("#######################").to_string());
             thread::sleep(Duration::from_millis(100));
