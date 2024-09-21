@@ -11,6 +11,11 @@ struct Game {
     obstacles: [Vec<u8>; 24],
     coins: [Vec<u8>; 24],
     player: [u8; 2], // x y
+    direction_queue: u8, // 0: w; 1: a; 2: s; 3: d
+}
+
+struct MapCalculator {
+    map: [String; 24]
 }
 
 fn random(x: i16, y: i16) -> i16 { // Creates random number between x and y
@@ -22,6 +27,26 @@ fn check_position(cur_pos: [u8; 2], obstacles: [Vec<u8>; 24]) -> bool {
     let x = cur_pos[0] as usize;
     let y = cur_pos[1] as usize;
     !obstacles[y].contains(&(x as u8))
+}
+
+
+impl MapCalculator {
+    fn calculate_map(&self, character: char) -> [Vec<u8>; 24] {
+        let mut coordinates_vector: [Vec<u8>; 24] = Default::default();
+
+        for vec in &mut coordinates_vector {
+            *vec = Vec::new();
+        }
+
+        for (row_idx, row) in self.map.iter().enumerate() {
+            for (col_idx, ch) in row.chars().enumerate() {
+                if ch == character {
+                    coordinates_vector[row_idx].push(col_idx as u8);
+                }
+            }
+        }
+        coordinates_vector
+    }
 }
 
 
@@ -54,76 +79,67 @@ impl Game {
     }
 
     fn move_up(&mut self) { if check_position([self.player[0] , self.player[1] - 1], self.obstacles.clone()) { self.player[1] -= 1 }}
-    fn move_left(&mut self) { if check_position([self.player[0] - 1, self.player[1]], self.obstacles.clone()) { self.player[0] -= 1 }}
+    fn move_left(&mut self) { if check_position([self.player[0] - 2, self.player[1]], self.obstacles.clone()) { self.player[0] -= 1 }}
     fn move_down(&mut self) { if check_position([self.player[0] , self.player[1] + 1], self.obstacles.clone()) { self.player[1] += 1 }}
-    fn move_right(&mut self) { if check_position([self.player[0] + 1, self.player[1]], self.obstacles.clone()) { self.player[0] += 1 }}
+    fn move_right(&mut self) { if check_position([self.player[0] + 2, self.player[1]], self.obstacles.clone()) { self.player[0] += 1 }}
+
+    fn move_player(&mut self) {
+        let direction: u8 = self.direction_queue;
+        match direction {
+            0 => self.move_up(),
+            1 => self.move_left(),
+            2 => self.move_down(),
+            3 => self.move_right(),
+            _ => {}
+        }
+    }
 }
 
 
 fn prepare_game() {
-    let obstacle_coordinates: [Vec<u8>; 24] = [
-        vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48],
-        vec![0, 24, 48],
-        vec![0, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 18, 19, 20, 24, 28, 29, 30, 31, 32, 33, 34, 35, 36, 40, 41, 42, 43, 44, 48],
-        vec![0, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 18, 19, 20, 24, 28, 29, 30, 31, 32, 33, 34, 35, 36, 40, 41, 42, 43, 44, 48],
-        vec![0, 48],
-        vec![0, 4, 5, 6, 7, 8, 12, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 34, 35, 36, 40, 41, 42, 43, 44, 48],
-        vec![0, 12, 13, 14, 24, 34, 35, 36, 48],
-        vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 18, 19, 20, 24, 28, 29, 30, 31, 32, 33, 34, 35, 36, 40, 41, 42, 43, 44, 45, 46, 47, 48],
-        vec![8, 12, 13, 14, 15, 16, 17, 18, 19, 20, 24, 28, 29, 30, 31, 32, 33, 34, 35, 36, 40],
-        vec![8, 12, 13, 14, 34, 35, 36, 40],
-        vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 13, 14, 18, 19, 20, 21, 22, 26, 27, 28, 29, 30, 34, 35, 36, 40, 41, 42, 43, 44, 45, 46, 47, 48],
-        vec![18, 30],
-        vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 13, 14, 18, 30, 34, 35, 36, 40, 41, 42, 43, 44, 45, 46, 47, 48],
-        vec![8, 12, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 34, 35, 36, 40],
-        vec![8, 12, 13, 14, 34, 35, 36, 40],
-        vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 34, 35, 36, 40, 41, 42, 43, 44, 45, 46, 47, 48],
-        vec![0, 24, 48],
-        vec![0, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 18, 19, 20, 24, 28, 29, 30, 31, 32, 33, 34, 35, 36, 40, 41, 42, 43, 44, 48],
-        vec![0, 8, 40, 48],
-        vec![0, 1, 2, 3, 4, 8, 12, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 36, 40, 44, 45, 46, 47, 48],
-        vec![0, 12, 24, 36, 48],
-        vec![0, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 24, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 48],
-        vec![0, 48],
-        vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48]];
+    let map_arr: [String; 24] = [
+        String::from("#################################################"),
+        String::from("# . . . . . . . . . . . # . . . . . . . . . . . #"),
+        String::from("# . ##### . ######### . # . ######### . ##### . #"),
+        String::from("# . ##### . ######### . # . ######### . ##### . #"),
+        String::from("# . . . . . . . . . . . . . . . . . . . . . . . #"),
+        String::from("# . ##### . ### . ############# . ### . ##### . #"),
+        String::from("# . . . . . ### . . . . # . . . . ### . . . . . #"),
+        String::from("######### . ######### . # . ######### . #########"),
+        String::from("        # . ######### . # . ######### . #        "),
+        String::from("        # . ###                   ### . #        "),
+        String::from("######### . ###   #####   #####   ### . #########"),
+        String::from("          .       #           #       .          "),
+        String::from("######### . ###   #           #   ### . #########"),
+        String::from("        # . ###   #############   ### . #        "),
+        String::from("        # . ###                   ### . #        "),
+        String::from("######### . ###   #############   ### . #########"),
+        String::from("# . . . . . . . . . . . # . . . . . . . . . . . #"),
+        String::from("# . ##### . ######### . # . ######### . ##### . #"),
+        String::from("# . . . # . . . . . . . . . . . . . . . # . . . #"),
+        String::from("##### . # . # . ################# . # . # . #####"),
+        String::from("# . . . . . # . . . . . # . . . . . # . . . . . #"),
+        String::from("# . ################# . # . ################# . #"),
+        String::from("# . . . . . . . . . . . . . . . . . . . . . . . #"),
+        String::from("#################################################")
+    ];
+    let map_calc = MapCalculator { map: map_arr };
 
-    let coin_coordinates: [Vec<u8>; 24] = [
-        vec![],
-        vec![2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46],
-        vec![2, 10, 22, 26, 38, 46],
-        vec![2, 10, 22, 26, 38, 46],
-        vec![2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46],
-        vec![2, 10, 16, 32, 38, 46],
-        vec![2, 4, 6, 8, 10, 16, 18, 20, 22, 26, 28, 30, 32, 38, 40, 42, 44, 46],
-        vec![10, 22, 26, 38],
-        vec![10, 22, 26, 38],
-        vec![10, 38],
-        vec![10, 38],
-        vec![10, 38],
-        vec![10, 38],
-        vec![10, 38],
-        vec![10, 38],
-        vec![10, 38],
-        vec![2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46],
-        vec![2, 10, 22, 26, 38, 46],
-        vec![2, 4, 6, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 42, 44, 46],
-        vec![6, 10, 14, 34, 38, 42],
-        vec![2, 4, 6, 8, 10, 14, 16, 18, 20, 22, 26, 28, 30, 32, 34, 38, 40, 42, 44, 46],
-        vec![2, 22, 26, 46],
-        vec![2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46],
-        vec![]];
+    let obstacle_coordinates: [Vec<u8>; 24] = map_calc.calculate_map('#');
+    let coin_coordinates: [Vec<u8>; 24] = map_calc.calculate_map('.');
 
     let player_coordinates: [u8; 2] = [24, 18]; // [x, y]
 
     let mut game = Game {
         obstacles: obstacle_coordinates,
         coins: coin_coordinates,
-        player: player_coordinates
+        player: player_coordinates,
+        direction_queue: 1
     };
 
     enable_raw_mode().expect("Could not enable raw mode.");
 
-    let frame_duration = Duration::from_millis(100);
+    let frame_duration = Duration::from_millis(120);
     let mut last_frame = Instant::now();
 
     loop {
@@ -135,10 +151,13 @@ fn prepare_game() {
                             println!("Exiting...");
                             break;
                         }
-                        KeyCode::Char('w') => game.move_up(),
-                        KeyCode::Char('a') => game.move_left(),
-                        KeyCode::Char('s') => game.move_down(),
-                        KeyCode::Char('d') => game.move_right(),
+
+                        // Have to work on this later -> Additionally, I have to add a better direction queue
+
+                        KeyCode::Char('w') => { if game.player[0] % 2 == 0 {game.direction_queue = 0} },
+                        KeyCode::Char('a') => { if game.player[0] % 2 == 0 {game.direction_queue = 1} },
+                        KeyCode::Char('s') => { if game.player[0] % 2 == 0 {game.direction_queue = 2} },
+                        KeyCode::Char('d') => { if game.player[0] % 2 == 0 {game.direction_queue = 3} },
                         _ => {}
                     }
                 }
@@ -146,6 +165,7 @@ fn prepare_game() {
         }
 
         if last_frame.elapsed() >= frame_duration {
+            game.move_player();
             game.draw();
             last_frame = Instant::now();
         }
