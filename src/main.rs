@@ -1,9 +1,11 @@
-use std::{io};
+use std::{io, thread};
 use std::io::Write;
 // use rand::Rng;
 use crossterm::{cursor, event::{self, Event, KeyCode}, terminal::{disable_raw_mode, enable_raw_mode}, ExecutableCommand};
 use std::time::{Duration, Instant};
 use crossterm::event::KeyEventKind;
+use colored::*;
+use crossterm::style::Stylize;
 use crossterm::terminal::{Clear, ClearType};
 
 
@@ -11,7 +13,9 @@ struct Game {
     obstacles: [Vec<u8>; 24],
     coins: [Vec<u8>; 24],
     player: [u8; 2], // x y
+    current_direction: u8,
     direction_queue: u8, // 0: w; 1: a; 2: s; 3: d
+    is_finished: bool,
 }
 
 struct MapCalculator {
@@ -53,8 +57,9 @@ impl MapCalculator {
 
 
 impl Game {
-    fn draw(&self) {
+    fn draw(&mut self) {
         let mut map : String = Default::default();
+        let mut coin_counter: u8 = 0;
         let mut stdout = io::stdout();
         stdout.execute(Clear(ClearType::All)).unwrap();
         stdout.execute(cursor::MoveTo(0, 0)).unwrap();
@@ -65,11 +70,12 @@ impl Game {
                 let x: u8 = x;
 
                 if self.obstacles[y as usize].contains(&x) {
-                    map += "#"
+                    map += &Colorize::blue("#").to_string();
                 } else if self.player == [x, y] {
-                    map += "@"
+                    map += &Colorize::bright_yellow("@").to_string();
                 } else if self.coins[y as usize].contains(&x) {
-                    map += "•"
+                    map += "•";
+                    coin_counter += 1;
                 } else {
                     map += " "
                 }
@@ -77,7 +83,26 @@ impl Game {
             map += "\n"
         }
         print!("{}", map);
+        if coin_counter == 0 { self.is_finished = true; }
         stdout.flush().unwrap();
+    }
+
+    fn check_position(&mut self)  {
+        let x = self.player[0] as usize;
+        let y = self.player[1] as usize;
+        self.coins[y].retain(|&coin_x| coin_x != x as u8);
+    }
+
+    fn queue_checker(&mut self) {
+        if !(self.player[0] % 2 == 0) { return; }
+        let direction: u8 = self.direction_queue;
+        match direction {
+            0 => if check_position([self.player[0] , self.player[1] - 1], self.obstacles.clone()) { self.current_direction = direction }, // W
+            1 => if check_position([self.player[0] - 2, self.player[1]], self.obstacles.clone()) { self.current_direction = direction }, // A
+            2 => if check_position([self.player[0] , self.player[1] + 1], self.obstacles.clone()) { self.current_direction = direction }, // S
+            3 => if check_position([self.player[0] + 2, self.player[1]], self.obstacles.clone()) { self.current_direction = direction }, // D
+            _ => {}
+        }
     }
 
     fn move_up(&mut self) { if check_position([self.player[0] , self.player[1] - 1], self.obstacles.clone()) { self.player[1] -= 1 }}
@@ -86,7 +111,7 @@ impl Game {
     fn move_right(&mut self) { if check_position([self.player[0] + 2, self.player[1]], self.obstacles.clone()) { self.player[0] += 1 }}
 
     fn move_player(&mut self) {
-        let direction: u8 = self.direction_queue;
+        let direction: u8 = self.current_direction;
         match direction {
             0 => self.move_up(),
             1 => self.move_left(),
@@ -94,6 +119,22 @@ impl Game {
             3 => self.move_right(),
             _ => {}
         }
+    }
+
+    fn finished(&self) {
+        let mut stdout = io::stdout();
+        stdout.execute(Clear(ClearType::All)).unwrap();
+        stdout.execute(cursor::MoveTo(0, 0)).unwrap();
+        stdout.flush().unwrap();
+        for i in 0..12 {
+            thread::sleep(Duration::from_millis(100));
+            println!("{}", Colorize::bright_blue("#######################").to_string());
+            thread::sleep(Duration::from_millis(100));
+            print!("{}", Colorize::bright_blue("## ").to_string());
+            print!("{}", Colorize::bright_yellow("Y O U - @ - W O N").to_string());
+            println!("{}", Colorize::bright_blue(" ##").to_string());
+        }
+        println!("{}", Colorize::bright_blue("#######################").to_string());
     }
 }
 
@@ -136,7 +177,9 @@ fn prepare_game() {
         obstacles: obstacle_coordinates,
         coins: coin_coordinates,
         player: player_coordinates,
-        direction_queue: 1
+        current_direction: 1,
+        direction_queue: 1,
+        is_finished: false,
     };
 
     enable_raw_mode().expect("Could not enable raw mode.");
@@ -155,11 +198,14 @@ fn prepare_game() {
                         }
 
                         // Have to work on this later -> Additionally, I have to add a better direction queue
-
-                        KeyCode::Char('w') => { if game.player[0] % 2 == 0 {game.direction_queue = 0} },
-                        KeyCode::Char('a') => { if game.player[0] % 2 == 0 {game.direction_queue = 1} },
-                        KeyCode::Char('s') => { if game.player[0] % 2 == 0 {game.direction_queue = 2} },
-                        KeyCode::Char('d') => { if game.player[0] % 2 == 0 {game.direction_queue = 3} },
+                        KeyCode::Tab => {
+                            game.finished();
+                            break
+                        }
+                        KeyCode::Char('w') => { game.direction_queue = 0},
+                        KeyCode::Char('a') => { game.direction_queue = 1},
+                        KeyCode::Char('s') => { game.direction_queue = 2},
+                        KeyCode::Char('d') => { game.direction_queue = 3 },
                         _ => {}
                     }
                 }
@@ -168,6 +214,12 @@ fn prepare_game() {
 
         if last_frame.elapsed() >= frame_duration {
             game.move_player();
+            game.queue_checker();
+            game.check_position();
+            if game.is_finished {
+                game.finished();
+                return;
+            }
             game.draw();
             last_frame = Instant::now();
         }
