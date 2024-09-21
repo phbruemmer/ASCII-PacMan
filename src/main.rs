@@ -1,6 +1,6 @@
 use std::{io};
 use std::io::Write;
-use rand::Rng;
+// use rand::Rng;
 use crossterm::{cursor, event::{self, Event, KeyCode}, terminal::{disable_raw_mode, enable_raw_mode}, ExecutableCommand};
 use std::time::{Duration, Instant};
 use crossterm::event::KeyEventKind;
@@ -18,10 +18,12 @@ struct MapCalculator {
     map: [String; 24]
 }
 
+/*
 fn random(x: i16, y: i16) -> i16 { // Creates random number between x and y
     let mut rng = rand::thread_rng();
     rng.gen_range(x..y)
 }
+*/
 
 fn check_position(cur_pos: [u8; 2], obstacles: [Vec<u8>; 24]) -> bool {
     let x = cur_pos[0] as usize;
