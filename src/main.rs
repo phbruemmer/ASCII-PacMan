@@ -6,6 +6,7 @@ use std::time::{Duration, Instant};
 use crossterm::event::KeyEventKind;
 use colored::*;
 use crossterm::terminal::{Clear, ClearType};
+use rusty_audio::Audio;
 
 
 struct Game {
@@ -89,8 +90,21 @@ impl Game {
     fn check_position(&mut self)  {
         let x = self.player[0] as usize;
         let y = self.player[1] as usize;
+
+        let initial_length = self.coins[y].len();
         self.coins[y].retain(|&coin_x| coin_x != x as u8);
+
+        if self.coins[y].len() < initial_length {
+            thread::spawn( || {
+                let mut coin_sound = Audio::new();
+                coin_sound.add("coin", "src/sounds/collect_coin.mp3");
+                coin_sound.play("coin");
+                coin_sound.wait();
+            });
+        }
     }
+
+
 
     fn queue_checker(&mut self) {
         if !(self.player[0] % 2 == 0) { return; }
@@ -186,6 +200,11 @@ fn prepare_game() {
     let frame_duration = Duration::from_millis(120);
     let mut last_frame = Instant::now();
 
+    let mut start_music = Audio::new();
+    start_music.add("start", "src/sounds/PacMan_Start_,Music.mp3");
+    start_music.play("start");
+    start_music.wait();
+
     loop {
         if event::poll(Duration::from_millis(1)).expect("Something went wrong.") {
             if let Ok(Event::Key(key_event)) = event::read() {
@@ -196,7 +215,6 @@ fn prepare_game() {
                             break;
                         }
 
-                        // Have to work on this later -> Additionally, I have to add a better direction queue
                         KeyCode::Tab => {
                             game.finished();
                             break
