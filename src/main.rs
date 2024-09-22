@@ -16,6 +16,8 @@ struct Game {
     current_direction: u8,
     direction_queue: u8, // 0: w; 1: a; 2: s; 3: d
     is_finished: bool,
+    speed_compensation: bool,
+    frames: u32
 }
 
 struct MapCalculator {
@@ -119,9 +121,9 @@ impl Game {
         }
     }
 
-    fn move_up(&mut self) { if check_position([self.player[0] , self.player[1] - 1], self.obstacles.clone()) { self.player[1] -= 1 }}
+    fn move_up(&mut self) { if check_position([self.player[0] , self.player[1] - 1], self.obstacles.clone()) { if self.frames % 2 == 0 { self.player[1] -= 1; } }}
     fn move_left(&mut self) { if check_position([self.player[0] - 2, self.player[1]], self.obstacles.clone()) { self.player[0] -= 1 }}
-    fn move_down(&mut self) { if check_position([self.player[0] , self.player[1] + 1], self.obstacles.clone()) { self.player[1] += 1 }}
+    fn move_down(&mut self) { if check_position([self.player[0] , self.player[1] + 1], self.obstacles.clone()) { if self.frames % 2 == 0 { self.player[1] += 1; } }}
     fn move_right(&mut self) { if check_position([self.player[0] + 2, self.player[1]], self.obstacles.clone()) { self.player[0] += 1 }}
 
     fn move_player(&mut self) {
@@ -194,6 +196,8 @@ fn prepare_game() {
         current_direction: 1,
         direction_queue: 1,
         is_finished: false,
+        speed_compensation: true,
+        frames: 0,
     };
 
     enable_raw_mode().expect("Could not enable raw mode.");
@@ -230,9 +234,9 @@ fn prepare_game() {
                             game.finished();
                             break
                         }
-                        KeyCode::Char('w') => { game.direction_queue = 0},
-                        KeyCode::Char('a') => { game.direction_queue = 1},
-                        KeyCode::Char('s') => { game.direction_queue = 2},
+                        KeyCode::Char('w') => { game.direction_queue = 0 },
+                        KeyCode::Char('a') => { game.direction_queue = 1 },
+                        KeyCode::Char('s') => { game.direction_queue = 2 },
                         KeyCode::Char('d') => { game.direction_queue = 3 },
                         _ => {}
                     }
@@ -249,6 +253,7 @@ fn prepare_game() {
                 return;
             }
             game.draw();
+            if game.speed_compensation { game.frames += 1; }
             last_frame = Instant::now();
         }
     }
