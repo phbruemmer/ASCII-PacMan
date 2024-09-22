@@ -203,6 +203,7 @@ fn prepare_game() {
     let mut start_music = Audio::new();
     start_music.add("start", "src/sounds/PacMan_Start_,Music.mp3");
     start_music.play("start");
+    game.draw();
     start_music.wait();
 
     loop {
