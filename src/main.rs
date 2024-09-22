@@ -97,12 +97,13 @@ impl Game {
         if self.coins[y].len() < initial_length {
             thread::spawn( || {
                 let mut coin_sound = Audio::new();
-                coin_sound.add("coin", "src/sounds/collect_coin.mp3");
+                coin_sound.add("coin", "coin_temp.mp3");
                 coin_sound.play("coin");
                 coin_sound.wait();
             });
         }
     }
+
 
 
 
@@ -200,11 +201,20 @@ fn prepare_game() {
     let frame_duration = Duration::from_millis(120);
     let mut last_frame = Instant::now();
 
+    // Game sounds
     let mut start_music = Audio::new();
-    start_music.add("start", "src/sounds/PacMan_Start_,Music.mp3");
+    let start_data = include_bytes!("../src/sounds/PacMan_Start_Music.mp3");
+    let temp_path = "start_music.mp3";
+    std::fs::write(temp_path, start_data).unwrap();
+
+    let coin_data = include_bytes!("../src/sounds/collect_coin.mp3");
+    std::fs::write("coin_temp.mp3", coin_data).unwrap();
+
+    start_music.add("start", temp_path);
     start_music.play("start");
     game.draw();
     start_music.wait();
+    std::fs::remove_file(temp_path).unwrap();
 
     loop {
         if event::poll(Duration::from_millis(1)).expect("Something went wrong.") {
@@ -244,6 +254,7 @@ fn prepare_game() {
     }
 
     disable_raw_mode().expect("Could not disable raw mode.");
+    std::fs::remove_file("coin_temp.mp3").unwrap();
 }
 
 fn main() {
