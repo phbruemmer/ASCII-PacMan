@@ -241,10 +241,10 @@ fn prepare_game() {
                             game.finished();
                             break
                         }
-                        KeyCode::Char('w') => { game.direction_queue = 0 },
-                        KeyCode::Char('a') => { game.direction_queue = 1 },
-                        KeyCode::Char('s') => { game.direction_queue = 2 },
-                        KeyCode::Char('d') => { game.direction_queue = 3 },
+                        KeyCode::Char('w') | KeyCode::Up => { game.direction_queue = 0 },
+                        KeyCode::Char('a') | KeyCode::Left => { game.direction_queue = 1 },
+                        KeyCode::Char('s') | KeyCode::Down => { game.direction_queue = 2 },
+                        KeyCode::Char('d') | KeyCode::Right => { game.direction_queue = 3 },
                         _ => {}
                     }
                 }
