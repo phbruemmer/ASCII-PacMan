@@ -10,8 +10,9 @@ use rusty_audio::Audio;
 
 
 struct Game {
-    obstacles: [Vec<u8>; 24],
-    coins: [Vec<u8>; 24],
+    map_size: [u8; 2],
+    obstacles: Vec<Vec<u8>>,
+    coins: Vec<Vec<u8>>,
     player: [u8; 2], // x y
     current_direction: u8,
     direction_queue: u8, // 0: w; 1: a; 2: s; 3: d
@@ -21,7 +22,7 @@ struct Game {
 }
 
 struct MapCalculator {
-    map: [String; 24]
+    map: Vec<String>
 }
 
 /*
@@ -31,7 +32,7 @@ fn random(x: i16, y: i16) -> i16 { // Creates random number between x and y
 }
 */
 
-fn check_position(cur_pos: [u8; 2], obstacles: [Vec<u8>; 24]) -> bool {
+fn check_position(cur_pos: [u8; 2], obstacles: Vec<Vec<u8>>) -> bool {
     let x = cur_pos[0] as usize;
     let y = cur_pos[1] as usize;
     !obstacles[y].contains(&(x as u8))
@@ -39,19 +40,16 @@ fn check_position(cur_pos: [u8; 2], obstacles: [Vec<u8>; 24]) -> bool {
 
 
 impl MapCalculator {
-    fn calculate_map(&self, character: char) -> [Vec<u8>; 24] {
-        let mut coordinates_vector: [Vec<u8>; 24] = Default::default();
-
-        for vec in &mut coordinates_vector {
-            *vec = Vec::new();
-        }
-
+    fn calculate_map(&self, character: char) -> Vec<Vec<u8>> {
+        let mut coordinates_vector: Vec<Vec<u8>> = vec![];
         for (row_idx, row) in self.map.iter().enumerate() {
+            coordinates_vector.push(vec![]);
             for (col_idx, ch) in row.chars().enumerate() {
                 if ch == character {
                     coordinates_vector[row_idx].push(col_idx as u8);
                 }
             }
+            println!();
         }
         coordinates_vector
     }
@@ -63,31 +61,30 @@ impl Game {
         let mut map : String = Default::default();
         let mut coin_counter: u8 = 0;
         let mut stdout = io::stdout();
+
         stdout.execute(Clear(ClearType::All)).unwrap();
         stdout.execute(cursor::MoveTo(0, 0)).unwrap();
-        for y in 0..24 {
-            let y: u8 = y;
 
-            for x in 0..49 {
-                let x: u8 = x;
-
-                if self.obstacles[y as usize].contains(&x) {
+        for y in 0..self.map_size[1] {
+            for x in 0..self.map_size[0] {
+                if y < self.obstacles.len() as u8 && self.obstacles[y as usize].contains(&x) {
                     map += &Colorize::blue("#").to_string();
                 } else if self.player == [x, y] {
                     map += &Colorize::bright_yellow("@").to_string();
-                } else if self.coins[y as usize].contains(&x) {
+                } else if y < self.coins.len() as u8 && self.coins[y as usize].contains(&x) {
                     map += "•";
                     coin_counter += 1;
                 } else {
-                    map += " "
+                    map += " ";
                 }
             }
-            map += "\n"
+            map += "\n";
         }
-        print!("{}", map);
+        println!("{}", map);
         if coin_counter == 0 { self.is_finished = true; }
         stdout.flush().unwrap();
     }
+
 
     fn check_position(&mut self)  {
         let x = self.player[0] as usize;
@@ -156,7 +153,16 @@ impl Game {
 
 
 fn prepare_game() {
-    let map_arr: [String; 24] = [
+    fn calculate_max_map_width(map: Vec<String>) -> u8 {
+        let mut max_width: u8 = 0;
+        for i in map {
+            if i.len() > max_width as usize {
+                max_width = i.len() as u8;
+            }
+        }
+        max_width
+    }
+    let map_arr: Vec<String> = vec![
         String::from("#################################################"),
         String::from("# . . . . . . . . . . . # . . . . . . . . . . . #"),
         String::from("# . ##### . ######### . # . ######### . ##### . #"),
@@ -180,16 +186,18 @@ fn prepare_game() {
         String::from("# . . . . . # . . . . . # . . . . . # . . . . . #"),
         String::from("# . ################# . # . ################# . #"),
         String::from("# . . . . . . . . . . . . . . . . . . . . . . . #"),
+        String::from("# . . . . . . . . . . . . . . . . . . . . . . . #"),
         String::from("#################################################")
     ];
-    let map_calc = MapCalculator { map: map_arr };
+    let map_calc = MapCalculator { map: map_arr.clone() };
 
-    let obstacle_coordinates: [Vec<u8>; 24] = map_calc.calculate_map('#');
-    let coin_coordinates: [Vec<u8>; 24] = map_calc.calculate_map('.');
+    let obstacle_coordinates: Vec<Vec<u8>> = map_calc.calculate_map('#');
+    let coin_coordinates: Vec<Vec<u8>> = map_calc.calculate_map('.');
 
     let player_coordinates: [u8; 2] = [24, 18]; // [x, y]
 
     let mut game = Game {
+        map_size: [calculate_max_map_width(map_arr.clone()), map_arr.len() as u8],
         obstacles: obstacle_coordinates,
         coins: coin_coordinates,
         player: player_coordinates,
@@ -341,6 +349,35 @@ OBSTACLE COORDINATES:
 [0, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 24, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 48],
 [0, 48],
 [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48]]
+*/
+
+
+/*
+
+[[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48],
+[0, 24, 48],
+[0, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 18, 19, 20, 24, 28, 29, 30, 31, 32, 33, 34, 35, 36, 40, 41, 42, 43, 44, 48],
+[0, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 18, 19, 20, 24, 28, 29, 30, 31, 32, 33, 34, 35, 36, 40, 41, 42, 43, 44, 48],
+[0, 48], [0, 4, 5, 6, 7, 8, 12, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 34, 35, 36, 40, 41, 42, 43, 44, 48],
+[0, 12, 13, 14, 24, 34, 35, 36, 48],
+[0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 18, 19, 20, 24, 28, 29, 30, 31, 32, 33, 34, 35, 36, 40, 41, 42, 43, 44, 45, 46, 47, 48],
+[8, 12, 13, 14, 15, 16, 17, 18, 19, 20, 24, 28, 29, 30, 31, 32, 33, 34, 35, 36, 40], [8, 12, 13, 14, 34, 35, 36, 40],
+[0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 13, 14, 18, 19, 20, 21, 22, 26, 27, 28, 29, 30, 34, 35, 36, 40, 41, 42, 43, 44, 45, 46, 47, 48],
+[18, 30], [0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 13, 14, 18, 30, 34, 35, 36, 40, 41, 42, 43, 44, 45, 46, 47, 48],
+[8, 12, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 34, 35, 36, 40],
+[8, 12, 13, 14, 34, 35, 36, 40],
+[0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 34, 35, 36, 40, 41, 42, 43, 44, 45, 46, 47, 48],
+[0, 24, 48],
+[0, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 18, 19, 20, 24, 28, 29, 30, 31, 32, 33, 34, 35, 36, 40, 41, 42, 43, 44, 48],
+[0, 8, 40, 48],
+[0, 1, 2, 3, 4, 8, 12, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 36, 40, 44, 45, 46, 47, 48],
+[0, 12, 24, 36, 48],
+[0, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 24, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 48],
+[0, 48],
+[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48]]
+
+
+
 */
 
 /*
