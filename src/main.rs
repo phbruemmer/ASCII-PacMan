@@ -186,7 +186,6 @@ fn prepare_game() {
         String::from("# . . . . . # . . . . . # . . . . . # . . . . . #"),
         String::from("# . ################# . # . ################# . #"),
         String::from("# . . . . . . . . . . . . . . . . . . . . . . . #"),
-        String::from("# . . . . . . . . . . . . . . . . . . . . . . . #"),
         String::from("#################################################")
     ];
     let map_calc = MapCalculator { map: map_arr.clone() };
