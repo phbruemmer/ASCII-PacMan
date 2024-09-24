@@ -18,7 +18,16 @@ struct Game {
     direction_queue: u8, // 0: w; 1: a; 2: s; 3: d
     is_finished: bool,
     speed_compensation: bool,
-    frames: u32
+    frames: u32,
+    red_ghost: Ghost,
+    orange_ghost: Ghost,
+    blue_ghost: Ghost,
+    pink_ghost: Ghost,
+}
+
+struct Ghost {
+    coordinates: [u8; 2],
+    mortal: bool
 }
 
 struct MapCalculator {
@@ -39,6 +48,13 @@ fn check_position(cur_pos: [u8; 2], obstacles: Vec<Vec<u8>>) -> bool {
 }
 
 
+impl Ghost {
+    fn move_ghost(&self) {
+
+    }
+}
+
+
 impl MapCalculator {
     fn calculate_map(&self, character: char) -> Vec<Vec<u8>> {
         let mut coordinates_vector: Vec<Vec<u8>> = vec![];
@@ -49,7 +65,6 @@ impl MapCalculator {
                     coordinates_vector[row_idx].push(col_idx as u8);
                 }
             }
-            println!();
         }
         coordinates_vector
     }
@@ -71,7 +86,19 @@ impl Game {
                     map += &Colorize::blue("#").to_string();
                 } else if self.player == [x, y] {
                     map += &Colorize::bright_yellow("@").to_string();
-                } else if y < self.coins.len() as u8 && self.coins[y as usize].contains(&x) {
+                } else if self.red_ghost.coordinates == [x, y] {
+                    map += &Colorize::red("ᗣ").to_string();
+                }
+                else if self.orange_ghost.coordinates == [x, y] {
+                    map += &Colorize::bright_yellow("ᗣ").to_string();
+                }
+                else if self.blue_ghost.coordinates == [x, y] {
+                    map += &Colorize::cyan("ᗣ").to_string();
+                }
+                else if self.pink_ghost.coordinates == [x, y] {
+                    map += &Colorize::bright_magenta("ᗣ").to_string();
+                }
+                else if y < self.coins.len() as u8 && self.coins[y as usize].contains(&x) {
                     map += "•";
                     coin_counter += 1;
                 } else {
@@ -181,7 +208,7 @@ fn prepare_game() {
         String::from("######### . ###   #############   ### . #########"),
         String::from("# . . . . . . . . . . . # . . . . . . . . . . . #"),
         String::from("# . ##### . ######### . # . ######### . ##### . #"),
-        String::from("# . . . # . . . . . . . . . . . . . . . # . . . #"),
+        String::from("# . . . # . . . . . . .   . . . . . . . # . . . #"),
         String::from("##### . # . # . ################# . # . # . #####"),
         String::from("# . . . . . # . . . . . # . . . . . # . . . . . #"),
         String::from("# . ################# . # . ################# . #"),
@@ -192,6 +219,11 @@ fn prepare_game() {
 
     let obstacle_coordinates: Vec<Vec<u8>> = map_calc.calculate_map('#');
     let coin_coordinates: Vec<Vec<u8>> = map_calc.calculate_map('.');
+
+    let mut _red_ghost = Ghost { coordinates: [21, 11], mortal: false };
+    let mut _orange_ghost = Ghost { coordinates: [24, 11], mortal: false };
+    let mut _blue_ghost = Ghost { coordinates: [27, 11], mortal: false };
+    let mut _pink_ghost = Ghost { coordinates: [24, 12], mortal: false };
 
     let player_coordinates: [u8; 2] = [24, 18]; // [x, y]
 
@@ -205,6 +237,10 @@ fn prepare_game() {
         is_finished: false,
         speed_compensation: true,
         frames: 0,
+        red_ghost: _red_ghost,
+        orange_ghost: _orange_ghost,
+        blue_ghost: _blue_ghost,
+        pink_ghost: _pink_ghost
     };
 
     enable_raw_mode().expect("Could not enable raw mode.");
@@ -273,6 +309,17 @@ fn main() {
     prepare_game();
 }
 
+
+
+/*
+Ghost starting coordinates
+
+[11, 21]
+[11, 24]
+[11, 27]
+[12, 24]
+
+*/
 
 
 // terminal::enable_raw_mode().expect("Could not enable raw terminal mode!");
