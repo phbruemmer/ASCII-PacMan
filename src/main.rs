@@ -50,10 +50,10 @@ fn check_position(cur_pos: [u8; 2], obstacles: Vec<Vec<u8>>) -> bool {
 impl Ghost {
     fn move_ghost(&mut self, obstacles: &Vec<Vec<u8>>) {
         match self.direction {
-            0 => { if !obstacles[(self.position[1] - 1) as usize].contains(&self.position[0]) { self.position[1] -= 1;} }
-            1 => { if !obstacles[self.position[1] as usize].contains(&(&self.position[0] + 1)) { println!("{}", self.direction) } }
-            2 => { if !obstacles[(self.position[1] + 1) as usize].contains(&self.position[0]) { println!("{}", self.direction) } }
-            3 => { if !obstacles[self.position[1] as usize].contains(&(&self.position[0] + 1)) { println!("{}", self.direction) } }
+            0 => { if !obstacles[(self.position[1] - 1) as usize].contains(&self.position[0]) { self.position[1] -= 1;} else { self.direction = self.change_direction(); } }
+            1 => { if !obstacles[self.position[1] as usize].contains(&(&self.position[0] - 1)) { self.position[0] -= 1; } else { self.direction = self.change_direction(); } }
+            2 => { if !obstacles[(self.position[1] + 1) as usize].contains(&self.position[0]) { self.position[1] += 1; } else { self.direction = self.change_direction(); } }
+            3 => { if !obstacles[self.position[1] as usize].contains(&(&self.position[0] + 1)) { self.position[0] += 1; } else { self.direction = self.change_direction(); } }
             _ => { }
         }
     }
@@ -90,11 +90,6 @@ impl Game {
 
         stdout.execute(Clear(ClearType::All)).unwrap();
         stdout.execute(cursor::MoveTo(0, 0)).unwrap();
-
-        println!("{:?}", red_ghost_pos);
-        println!("{:?}", orange_ghost_pos);
-        println!("{:?}", blue_ghost_pos);
-        println!("{:?}", pink_ghost_pos);
 
         for y in 0..self.map_size[1] {
             for x in 0..self.map_size[0] {
