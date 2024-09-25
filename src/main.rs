@@ -1,5 +1,6 @@
 use std::{io, thread};
 use std::io::Write;
+use std::pin::pin;
 // use rand::Rng;
 use crossterm::{cursor, event::{self, Event, KeyCode}, terminal::{disable_raw_mode, enable_raw_mode}, ExecutableCommand};
 use std::time::{Duration, Instant};
@@ -20,10 +21,6 @@ struct Game {
     is_finished: bool,
     speed_compensation: bool,
     frames: u32,
-    red_ghost_pos: [u8; 2],
-    orange_ghost_pos: [u8; 2],
-    blue_ghost_pos: [u8; 2],
-    pink_ghost_pos: [u8; 2],
 }
 
 struct Ghost {
@@ -53,10 +50,10 @@ fn check_position(cur_pos: [u8; 2], obstacles: Vec<Vec<u8>>) -> bool {
 impl Ghost {
     fn move_ghost(&mut self, obstacles: &Vec<Vec<u8>>) {
         match self.direction {
-            0 => { if obstacles[(self.position[1] - 1) as usize].contains(&self.position[0]) { self.position[1] += 1 } else { self.change_direction(); } }
-            1 => { if obstacles[self.position[1] as usize].contains(&(&self.position[0] - 1)) { self.position[0] -= 1 } else { self.change_direction(); } }
-            2 => { if obstacles[(self.position[1] + 1) as usize].contains(&self.position[0]) { self.position[1] -= 1 } else { self.change_direction(); } }
-            3 => { if obstacles[self.position[1] as usize].contains(&(&self.position[0] + 1)) { self.position[0] += 1 } else { self.change_direction(); } }
+            0 => { if !obstacles[(self.position[1] - 1) as usize].contains(&self.position[0]) { self.position[1] -= 1;} }
+            1 => { if !obstacles[self.position[1] as usize].contains(&(&self.position[0] + 1)) { println!("{}", self.direction) } }
+            2 => { if !obstacles[(self.position[1] + 1) as usize].contains(&self.position[0]) { println!("{}", self.direction) } }
+            3 => { if !obstacles[self.position[1] as usize].contains(&(&self.position[0] + 1)) { println!("{}", self.direction) } }
             _ => { }
         }
     }
@@ -86,7 +83,7 @@ impl MapCalculator {
 
 
 impl Game {
-    fn draw(&mut self) {
+    fn draw(&mut self, red_ghost_pos: &[u8; 2], orange_ghost_pos: &[u8; 2], blue_ghost_pos: &[u8; 2], pink_ghost_pos: &[u8; 2],) {
         let mut map : String = Default::default();
         let mut coin_counter: u8 = 0;
         let mut stdout = io::stdout();
@@ -94,22 +91,27 @@ impl Game {
         stdout.execute(Clear(ClearType::All)).unwrap();
         stdout.execute(cursor::MoveTo(0, 0)).unwrap();
 
+        println!("{:?}", red_ghost_pos);
+        println!("{:?}", orange_ghost_pos);
+        println!("{:?}", blue_ghost_pos);
+        println!("{:?}", pink_ghost_pos);
+
         for y in 0..self.map_size[1] {
             for x in 0..self.map_size[0] {
                 if y < self.obstacles.len() as u8 && self.obstacles[y as usize].contains(&x) {
                     map += &Colorize::blue("#").to_string();
                 } else if self.player == [x, y] {
                     map += &Colorize::bright_yellow("@").to_string();
-                } else if self.red_ghost_pos == [x, y] {
+                } else if *red_ghost_pos == [x, y] {
                     map += &Colorize::red("ᗣ").to_string();
                 }
-                else if self.orange_ghost_pos == [x, y] {
+                else if *orange_ghost_pos == [x, y] {
                     map += &Colorize::bright_yellow("ᗣ").to_string();
                 }
-                else if self.blue_ghost_pos == [x, y] {
+                else if *blue_ghost_pos == [x, y] {
                     map += &Colorize::cyan("ᗣ").to_string();
                 }
-                else if self.pink_ghost_pos == [x, y] {
+                else if *pink_ghost_pos == [x, y] {
                     map += &Colorize::bright_magenta("ᗣ").to_string();
                 }
                 else if y < self.coins.len() as u8 && self.coins[y as usize].contains(&x) {
@@ -251,10 +253,6 @@ fn prepare_game() {
         is_finished: false,
         speed_compensation: true,
         frames: 0,
-        red_ghost_pos: _red_ghost.position,
-        orange_ghost_pos: _orange_ghost.position,
-        blue_ghost_pos: _blue_ghost.position,
-        pink_ghost_pos: _pink_ghost.position
     };
 
     enable_raw_mode().expect("Could not enable raw mode.");
@@ -273,7 +271,7 @@ fn prepare_game() {
 
     start_music.add("start", temp_path);
     start_music.play("start");
-    game.draw();
+    game.draw(&_red_ghost.position, &_orange_ghost.position, &_blue_ghost.position, &_pink_ghost.position);
     start_music.wait();
     std::fs::remove_file(temp_path).unwrap();
 
@@ -305,12 +303,15 @@ fn prepare_game() {
             game.move_player();
             game.queue_checker();
             game.check_position();
+            _red_ghost.move_ghost(&game.obstacles);
             _orange_ghost.move_ghost(&game.obstacles);
+            _blue_ghost.move_ghost(&game.obstacles);
+            _pink_ghost.move_ghost(&game.obstacles);
             if game.is_finished {
                 game.finished();
                 return;
             }
-            game.draw();
+            game.draw(&_red_ghost.position, &_orange_ghost.position, &_blue_ghost.position, &_pink_ghost.position);
             if game.speed_compensation { game.frames += 1; }
             last_frame = Instant::now();
         }
