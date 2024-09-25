@@ -6,6 +6,7 @@ use std::time::{Duration, Instant};
 use crossterm::event::KeyEventKind;
 use colored::*;
 use crossterm::terminal::{Clear, ClearType};
+use rand::Rng;
 use rusty_audio::Audio;
 
 
@@ -19,27 +20,28 @@ struct Game {
     is_finished: bool,
     speed_compensation: bool,
     frames: u32,
-    red_ghost: Ghost,
-    orange_ghost: Ghost,
-    blue_ghost: Ghost,
-    pink_ghost: Ghost,
+    red_ghost_pos: [u8; 2],
+    orange_ghost_pos: [u8; 2],
+    blue_ghost_pos: [u8; 2],
+    pink_ghost_pos: [u8; 2],
 }
 
 struct Ghost {
-    coordinates: [u8; 2],
-    mortal: bool
+    position: [u8; 2],
+    direction: u8,
+    mortal: bool,
 }
 
 struct MapCalculator {
     map: Vec<String>
 }
 
-/*
-fn random(x: i16, y: i16) -> i16 { // Creates random number between x and y
+
+fn random(x: u8, y: u8) -> u8 { // Creates random number between x and y
     let mut rng = rand::thread_rng();
     rng.gen_range(x..y)
 }
-*/
+
 
 fn check_position(cur_pos: [u8; 2], obstacles: Vec<Vec<u8>>) -> bool {
     let x = cur_pos[0] as usize;
@@ -49,8 +51,20 @@ fn check_position(cur_pos: [u8; 2], obstacles: Vec<Vec<u8>>) -> bool {
 
 
 impl Ghost {
-    fn move_ghost(&self) {
+    fn move_ghost(&mut self, obstacles: &Vec<Vec<u8>>) {
+        match self.direction {
+            0 => { if obstacles[(self.position[1] - 1) as usize].contains(&self.position[0]) { self.position[1] += 1 } else { self.change_direction(); } }
+            1 => { if obstacles[self.position[1] as usize].contains(&(&self.position[0] - 1)) { self.position[0] -= 1 } else { self.change_direction(); } }
+            2 => { if obstacles[(self.position[1] + 1) as usize].contains(&self.position[0]) { self.position[1] -= 1 } else { self.change_direction(); } }
+            3 => { if obstacles[self.position[1] as usize].contains(&(&self.position[0] + 1)) { self.position[0] += 1 } else { self.change_direction(); } }
+            _ => { }
+        }
+    }
 
+    fn change_direction(&mut self) -> u8 {
+        let mut new_direction: u8 = random(0, 4);
+        while new_direction == self.direction { new_direction = random(0, 4) }
+        new_direction
     }
 }
 
@@ -86,16 +100,16 @@ impl Game {
                     map += &Colorize::blue("#").to_string();
                 } else if self.player == [x, y] {
                     map += &Colorize::bright_yellow("@").to_string();
-                } else if self.red_ghost.coordinates == [x, y] {
+                } else if self.red_ghost_pos == [x, y] {
                     map += &Colorize::red("ᗣ").to_string();
                 }
-                else if self.orange_ghost.coordinates == [x, y] {
+                else if self.orange_ghost_pos == [x, y] {
                     map += &Colorize::bright_yellow("ᗣ").to_string();
                 }
-                else if self.blue_ghost.coordinates == [x, y] {
+                else if self.blue_ghost_pos == [x, y] {
                     map += &Colorize::cyan("ᗣ").to_string();
                 }
-                else if self.pink_ghost.coordinates == [x, y] {
+                else if self.pink_ghost_pos == [x, y] {
                     map += &Colorize::bright_magenta("ᗣ").to_string();
                 }
                 else if y < self.coins.len() as u8 && self.coins[y as usize].contains(&x) {
@@ -220,10 +234,10 @@ fn prepare_game() {
     let obstacle_coordinates: Vec<Vec<u8>> = map_calc.calculate_map('#');
     let coin_coordinates: Vec<Vec<u8>> = map_calc.calculate_map('.');
 
-    let mut _red_ghost = Ghost { coordinates: [21, 11], mortal: false };
-    let mut _orange_ghost = Ghost { coordinates: [24, 11], mortal: false };
-    let mut _blue_ghost = Ghost { coordinates: [27, 11], mortal: false };
-    let mut _pink_ghost = Ghost { coordinates: [24, 12], mortal: false };
+    let mut _red_ghost = Ghost { position: [21, 11], direction: 0, mortal: false };
+    let mut _orange_ghost = Ghost { position: [24, 11], direction: 0, mortal: false };
+    let mut _blue_ghost = Ghost { position: [27, 11], direction: 0, mortal: false };
+    let mut _pink_ghost = Ghost { position: [24, 12], direction: 0, mortal: false };
 
     let player_coordinates: [u8; 2] = [24, 18]; // [x, y]
 
@@ -237,10 +251,10 @@ fn prepare_game() {
         is_finished: false,
         speed_compensation: true,
         frames: 0,
-        red_ghost: _red_ghost,
-        orange_ghost: _orange_ghost,
-        blue_ghost: _blue_ghost,
-        pink_ghost: _pink_ghost
+        red_ghost_pos: _red_ghost.position,
+        orange_ghost_pos: _orange_ghost.position,
+        blue_ghost_pos: _blue_ghost.position,
+        pink_ghost_pos: _pink_ghost.position
     };
 
     enable_raw_mode().expect("Could not enable raw mode.");
@@ -291,6 +305,7 @@ fn prepare_game() {
             game.move_player();
             game.queue_checker();
             game.check_position();
+            _orange_ghost.move_ghost(&game.obstacles);
             if game.is_finished {
                 game.finished();
                 return;
