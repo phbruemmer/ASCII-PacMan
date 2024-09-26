@@ -15,11 +15,16 @@ struct Game {
     map_size: [u8; 2],
     obstacles: Vec<Vec<u8>>,
     coins: Vec<Vec<u8>>,
-    player: [u8; 2], // x y
-    current_direction: u8,
-    direction_queue: u8, // 0: w; 1: a; 2: s; 3: d
     is_finished: bool,
     speed_compensation: bool,
+    _player: Player
+}
+
+struct Player {
+    position: [u8; 2], // x y
+    current_direction: u8,
+    direction_queue: u8, // 0: w; 1: a; 2: s; 3: d
+    hearts: u8,
     frames: u32,
 }
 
@@ -61,7 +66,7 @@ impl Ghost {
         let random_value: u8 = random(0, 3);
 
         match self.direction {
-            0 => {
+            0 => { // UP (W)
                 if !obstacles[(self.position[1] - 1) as usize].contains(&self.position[0]) {
                     self.position[1] -= 1;
                 } else {
@@ -74,20 +79,20 @@ impl Ghost {
                     self.direction = 1;
                 }
             }
-            1 => {
+            1 => { // LEFT (A)
                 if !obstacles[self.position[1] as usize].contains(&(&self.position[0] - 2)) {
                     self.position[0] -= 1;
                 } else {
                     self.direction = self.change_direction();
                 }
-                if !obstacles[(self.position[1] + 1) as usize].contains(&(self.position[0])) && random_value == 0{
+                if !obstacles[(self.position[1] + 1) as usize].contains(&(self.position[0])) && random_value == 0 && self.position[0] % 2 == 0 {
                     self.direction = 2;
                 }
-                if !obstacles[(self.position[1] - 1) as usize].contains(&(self.position[0])) && random_value == 1 {
+                if !obstacles[(self.position[1] - 1) as usize].contains(&(self.position[0])) && random_value == 1 && self.position[0] % 2 == 0  {
                     self.direction = 0;
                 }
             }
-            2 => {
+            2 => { // DOWN (S)
                 if !obstacles[(self.position[1] + 1) as usize].contains(&self.position[0]) {
                     self.position[1] += 1;
                 } else {
@@ -100,16 +105,16 @@ impl Ghost {
                     self.direction = 1;
                 }
             }
-            3 => {
+            3 => { // RIGHT (D)
                 if !obstacles[self.position[1] as usize].contains(&(&self.position[0] + 2)) {
                     self.position[0] += 1;
                 } else {
                     self.direction = self.change_direction();
                 }
-                if !obstacles[(self.position[1] + 1) as usize].contains(&(self.position[0])) && random_value == 0{
+                if !obstacles[(self.position[1] + 1) as usize].contains(&(self.position[0])) && random_value == 0 && self.position[0] % 2 == 0 {
                     self.direction = 2;
                 }
-                if !obstacles[(self.position[1] - 1) as usize].contains(&(self.position[0])) && random_value == 1 {
+                if !obstacles[(self.position[1] - 1) as usize].contains(&(self.position[0])) && random_value == 1 && self.position[0] % 2 == 0 {
                     self.direction = 0;
                 }
             }
@@ -141,6 +146,53 @@ impl MapCalculator {
 }
 
 
+impl Player {
+    fn queue_checker(&mut self, obstacles: &Vec<Vec<u8>>) {
+        if !(self.position[0] % 2 == 0) { return; }
+        let direction: u8 = self.direction_queue;
+        match direction {
+            0 => if check_position([self.position[0] , self.position[1] - 1], obstacles.clone()) { self.current_direction = direction }, // W
+            1 => if check_position([self.position[0] - 2, self.position[1]], obstacles.clone()) { self.current_direction = direction }, // A
+            2 => if check_position([self.position[0] , self.position[1] + 1], obstacles.clone()) { self.current_direction = direction }, // S
+            3 => if check_position([self.position[0] + 2, self.position[1]], obstacles.clone()) { self.current_direction = direction }, // D
+            _ => {}
+        }
+    }
+
+    fn move_up(&mut self, obstacles: &Vec<Vec<u8>>) { if check_position([self.position[0] , self.position[1] - 1], obstacles.clone()) { if self.frames % 2 == 0 { self.position[1] -= 1; } }}
+    fn move_left(&mut self, obstacles: &Vec<Vec<u8>>) { if check_position([self.position[0] - 2, self.position[1]], obstacles.clone()) { self.position[0] -= 1 }}
+    fn move_down(&mut self, obstacles: &Vec<Vec<u8>>) { if check_position([self.position[0] , self.position[1] + 1], obstacles.clone()) { if self.frames % 2 == 0 { self.position[1] += 1; } }}
+    fn move_right(&mut self, obstacles: &Vec<Vec<u8>>) { if check_position([self.position[0] + 2, self.position[1]], obstacles.clone()) { self.position[0] += 1 }}
+
+    fn move_player(&mut self, obstacles: &Vec<Vec<u8>>) {
+        let direction: u8 = self.current_direction;
+        match direction {
+            0 => self.move_up(&obstacles),
+            1 => self.move_left(&obstacles),
+            2 => self.move_down(&obstacles),
+            3 => self.move_right(&obstacles),
+            _ => {}
+        }
+    }
+
+    fn check_position(&mut self, coins: &mut Vec<Vec<u8>>)  {
+        let x = self.position[0] as usize;
+        let y = self.position[1] as usize;
+
+        let initial_length = coins[y].len();
+        coins[y].retain(|&coin_x| coin_x != x as u8);
+
+        if coins[y].len() < initial_length {
+            thread::spawn( || {
+                let mut coin_sound = Audio::new();
+                coin_sound.add("coin", "coin_temp.mp3");
+                coin_sound.play("coin");
+                coin_sound.wait();
+            });
+        }
+    }
+}
+
 impl Game {
     fn draw(&mut self, red_ghost_pos: &[u8; 2], orange_ghost_pos: &[u8; 2], blue_ghost_pos: &[u8; 2], pink_ghost_pos: &[u8; 2],) {
         let mut map : String = Default::default();
@@ -154,7 +206,7 @@ impl Game {
             for x in 0..self.map_size[0] {
                 if y < self.obstacles.len() as u8 && self.obstacles[y as usize].contains(&x) {
                     map += &Colorize::blue("#").to_string();
-                } else if self.player == [x, y] {
+                } else if self._player.position == [x, y] {
                     map += &Colorize::bright_yellow("@").to_string();
                 } else if *red_ghost_pos == [x, y] {
                     map += &Colorize::red("o").to_string();
@@ -180,55 +232,6 @@ impl Game {
         println!("{}", map);
         if coin_counter == 0 { self.is_finished = true; }
         stdout.flush().unwrap();
-    }
-
-
-    fn check_position(&mut self)  {
-        let x = self.player[0] as usize;
-        let y = self.player[1] as usize;
-
-        let initial_length = self.coins[y].len();
-        self.coins[y].retain(|&coin_x| coin_x != x as u8);
-
-        if self.coins[y].len() < initial_length {
-            thread::spawn( || {
-                let mut coin_sound = Audio::new();
-                coin_sound.add("coin", "coin_temp.mp3");
-                coin_sound.play("coin");
-                coin_sound.wait();
-            });
-        }
-    }
-
-
-
-
-    fn queue_checker(&mut self) {
-        if !(self.player[0] % 2 == 0) { return; }
-        let direction: u8 = self.direction_queue;
-        match direction {
-            0 => if check_position([self.player[0] , self.player[1] - 1], self.obstacles.clone()) { self.current_direction = direction }, // W
-            1 => if check_position([self.player[0] - 2, self.player[1]], self.obstacles.clone()) { self.current_direction = direction }, // A
-            2 => if check_position([self.player[0] , self.player[1] + 1], self.obstacles.clone()) { self.current_direction = direction }, // S
-            3 => if check_position([self.player[0] + 2, self.player[1]], self.obstacles.clone()) { self.current_direction = direction }, // D
-            _ => {}
-        }
-    }
-
-    fn move_up(&mut self) { if check_position([self.player[0] , self.player[1] - 1], self.obstacles.clone()) { if self.frames % 2 == 0 { self.player[1] -= 1; } }}
-    fn move_left(&mut self) { if check_position([self.player[0] - 2, self.player[1]], self.obstacles.clone()) { self.player[0] -= 1 }}
-    fn move_down(&mut self) { if check_position([self.player[0] , self.player[1] + 1], self.obstacles.clone()) { if self.frames % 2 == 0 { self.player[1] += 1; } }}
-    fn move_right(&mut self) { if check_position([self.player[0] + 2, self.player[1]], self.obstacles.clone()) { self.player[0] += 1 }}
-
-    fn move_player(&mut self) {
-        let direction: u8 = self.current_direction;
-        match direction {
-            0 => self.move_up(),
-            1 => self.move_left(),
-            2 => self.move_down(),
-            3 => self.move_right(),
-            _ => {}
-        }
     }
 
     fn finished(&self) {
@@ -271,7 +274,7 @@ fn prepare_game() {
         String::from("        # . ######### . # . ######### . #        "),
         String::from("        # . ###                   ### . #        "),
         String::from("######### . ###   #####   #####   ### . #########"),
-        String::from("          .       #           #       .          "),
+        String::from("#         .       #           #       .         #"),
         String::from("######### . ###   #           #   ### . #########"),
         String::from("        # . ###   #############   ### . #        "),
         String::from("        # . ###                   ### . #        "),
@@ -297,16 +300,21 @@ fn prepare_game() {
 
     let player_coordinates: [u8; 2] = [24, 18]; // [x, y]
 
+    let mut player = Player {
+        position: player_coordinates,
+        current_direction: 1,
+        direction_queue: 1,
+        hearts: 3,
+        frames: 0,
+    };
+
     let mut game = Game {
         map_size: [calculate_max_map_width(map_arr.clone()), map_arr.len() as u8],
         obstacles: obstacle_coordinates,
         coins: coin_coordinates,
-        player: player_coordinates,
-        current_direction: 1,
-        direction_queue: 1,
         is_finished: false,
         speed_compensation: true,
-        frames: 0,
+        _player: player
     };
 
     enable_raw_mode().expect("Could not enable raw mode.");
@@ -343,10 +351,10 @@ fn prepare_game() {
                             game.finished();
                             break
                         }
-                        KeyCode::Char('w') | KeyCode::Up => { game.direction_queue = 0 },
-                        KeyCode::Char('a') | KeyCode::Left => { game.direction_queue = 1 },
-                        KeyCode::Char('s') | KeyCode::Down => { game.direction_queue = 2 },
-                        KeyCode::Char('d') | KeyCode::Right => { game.direction_queue = 3 },
+                        KeyCode::Char('w') | KeyCode::Up => { game._player.direction_queue = 0 },
+                        KeyCode::Char('a') | KeyCode::Left => { game._player.direction_queue = 1 },
+                        KeyCode::Char('s') | KeyCode::Down => { game._player.direction_queue = 2 },
+                        KeyCode::Char('d') | KeyCode::Right => { game._player.direction_queue = 3 },
                         _ => {}
                     }
                 }
@@ -354,9 +362,9 @@ fn prepare_game() {
         }
 
         if last_frame.elapsed() >= frame_duration {
-            game.move_player();
-            game.queue_checker();
-            game.check_position();
+            game._player.move_player(&game.obstacles);
+            game._player.queue_checker(&game.obstacles);
+            game._player.check_position(&mut game.coins);
             _red_ghost.move_ghost(&game.obstacles);
             _orange_ghost.move_ghost(&game.obstacles);
             _blue_ghost.move_ghost(&game.obstacles);
@@ -366,7 +374,7 @@ fn prepare_game() {
                 return;
             }
             game.draw(&_red_ghost.position, &_orange_ghost.position, &_blue_ghost.position, &_pink_ghost.position);
-            if game.speed_compensation { game.frames += 1; }
+            if game.speed_compensation { game._player.frames += 1; }
             last_frame = Instant::now();
         }
     }
