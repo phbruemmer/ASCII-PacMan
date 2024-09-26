@@ -32,7 +32,7 @@ struct Ghost {
     position: [u8; 2],
     direction: u8,
     mortal: bool,
-    active: bool
+    active: bool,
 }
 
 struct MapCalculator {
@@ -249,6 +249,16 @@ impl Game {
         }
         println!("{}", Colorize::bright_blue("#######################").to_string());
     }
+
+    fn game_over(&self) {
+        let mut stdout = io::stdout();
+        stdout.execute(Clear(ClearType::All)).unwrap();
+        stdout.execute(cursor::MoveTo(0, 0)).unwrap();
+        stdout.flush().unwrap();
+        println!("{}", Colorize::red("#######################").to_string());
+        println!("{}", Colorize::red("Game over.").to_string());
+        println!("{}", Colorize::red("#######################").to_string());
+    }
 }
 
 
@@ -293,11 +303,6 @@ fn prepare_game() {
     let obstacle_coordinates: Vec<Vec<u8>> = map_calc.calculate_map('#');
     let coin_coordinates: Vec<Vec<u8>> = map_calc.calculate_map('.');
 
-    let mut _red_ghost = Ghost { position: [21, 11], direction: 0, mortal: false, active: false };
-    let mut _orange_ghost = Ghost { position: [24, 11], direction: 0, mortal: false, active: true };
-    let mut _blue_ghost = Ghost { position: [27, 11], direction: 0, mortal: false , active: false };
-    let mut _pink_ghost = Ghost { position: [24, 12], direction: 0, mortal: false, active: false  };
-
     let player_coordinates: [u8; 2] = [24, 18]; // [x, y]
 
     let mut player = Player {
@@ -307,6 +312,11 @@ fn prepare_game() {
         hearts: 3,
         frames: 0,
     };
+
+    let mut _red_ghost = Ghost { position: [21, 11], direction: 0, mortal: false, active: false };
+    let mut _orange_ghost = Ghost { position: [24, 11], direction: 0, mortal: false, active: true };
+    let mut _blue_ghost = Ghost { position: [27, 11], direction: 0, mortal: false , active: false };
+    let mut _pink_ghost = Ghost { position: [24, 12], direction: 0, mortal: false, active: false };
 
     let mut game = Game {
         map_size: [calculate_max_map_width(map_arr.clone()), map_arr.len() as u8],
@@ -369,6 +379,14 @@ fn prepare_game() {
             _orange_ghost.move_ghost(&game.obstacles);
             _blue_ghost.move_ghost(&game.obstacles);
             _pink_ghost.move_ghost(&game.obstacles);
+            if _red_ghost.position == game._player.position { game._player.hearts -= 1 }
+            if _orange_ghost.position == game._player.position { game._player.hearts -= 1 }
+            if _blue_ghost.position == game._player.position { game._player.hearts -= 1 }
+            if _pink_ghost.position == game._player.position { game._player.hearts -= 1 }
+            if game._player.hearts == 0 {
+                game.game_over();
+                return
+            }
             if game.is_finished {
                 game.finished();
                 return;
