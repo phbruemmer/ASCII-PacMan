@@ -27,6 +27,7 @@ struct Ghost {
     position: [u8; 2],
     direction: u8,
     mortal: bool,
+    active: bool
 }
 
 struct MapCalculator {
@@ -49,11 +50,69 @@ fn check_position(cur_pos: [u8; 2], obstacles: Vec<Vec<u8>>) -> bool {
 
 impl Ghost {
     fn move_ghost(&mut self, obstacles: &Vec<Vec<u8>>) {
+        /*
+        Structure:
+         - Checks direction (0 - 3) 0 -> up (w); 1 -> left (a); 2 -> down (s); 3 -> right (d)
+         - Check whether the next object (y-axis) is an obstacle (or) check whether there is an obstacle 2 positions ahead (x-axis).
+            - If no obstacle was found: check whether the ghost can change direction or not
+                - If changing the direction is possible: request direction change (not forced)
+            - else: change direction
+        */
+        let random_value: u8 = random(0, 3);
+
         match self.direction {
-            0 => { if !obstacles[(self.position[1] - 1) as usize].contains(&self.position[0]) { self.position[1] -= 1;} else { self.direction = self.change_direction(); } }
-            1 => { if !obstacles[self.position[1] as usize].contains(&(&self.position[0] - 1)) { self.position[0] -= 1; } else { self.direction = self.change_direction(); } }
-            2 => { if !obstacles[(self.position[1] + 1) as usize].contains(&self.position[0]) { self.position[1] += 1; } else { self.direction = self.change_direction(); } }
-            3 => { if !obstacles[self.position[1] as usize].contains(&(&self.position[0] + 1)) { self.position[0] += 1; } else { self.direction = self.change_direction(); } }
+            0 => {
+                if !obstacles[(self.position[1] - 1) as usize].contains(&self.position[0]) {
+                    self.position[1] -= 1;
+                } else {
+                    self.direction = self.change_direction();
+                }
+                if !obstacles[self.position[1] as usize].contains(&(self.position[0] + 1)) && random_value == 0{
+                    self.direction = 3;
+                }
+                if !obstacles[self.position[1] as usize].contains(&(self.position[0] - 1)) && random_value == 1 {
+                    self.direction = 1;
+                }
+            }
+            1 => {
+                if !obstacles[self.position[1] as usize].contains(&(&self.position[0] - 2)) {
+                    self.position[0] -= 1;
+                } else {
+                    self.direction = self.change_direction();
+                }
+                if !obstacles[(self.position[1] + 1) as usize].contains(&(self.position[0])) && random_value == 0{
+                    self.direction = 2;
+                }
+                if !obstacles[(self.position[1] - 1) as usize].contains(&(self.position[0])) && random_value == 1 {
+                    self.direction = 0;
+                }
+            }
+            2 => {
+                if !obstacles[(self.position[1] + 1) as usize].contains(&self.position[0]) {
+                    self.position[1] += 1;
+                } else {
+                    self.direction = self.change_direction();
+                }
+                if !obstacles[self.position[1] as usize].contains(&(self.position[0] + 1)) && random_value == 0{
+                    self.direction = 3;
+                }
+                if !obstacles[self.position[1] as usize].contains(&(self.position[0] - 1)) && random_value == 1 {
+                    self.direction = 1;
+                }
+            }
+            3 => {
+                if !obstacles[self.position[1] as usize].contains(&(&self.position[0] + 2)) {
+                    self.position[0] += 1;
+                } else {
+                    self.direction = self.change_direction();
+                }
+                if !obstacles[(self.position[1] + 1) as usize].contains(&(self.position[0])) && random_value == 0{
+                    self.direction = 2;
+                }
+                if !obstacles[(self.position[1] - 1) as usize].contains(&(self.position[0])) && random_value == 1 {
+                    self.direction = 0;
+                }
+            }
             _ => { }
         }
     }
@@ -98,16 +157,16 @@ impl Game {
                 } else if self.player == [x, y] {
                     map += &Colorize::bright_yellow("@").to_string();
                 } else if *red_ghost_pos == [x, y] {
-                    map += &Colorize::red("ᗣ").to_string();
+                    map += &Colorize::red("o").to_string();
                 }
                 else if *orange_ghost_pos == [x, y] {
-                    map += &Colorize::bright_yellow("ᗣ").to_string();
+                    map += &Colorize::bright_yellow("o").to_string();
                 }
                 else if *blue_ghost_pos == [x, y] {
-                    map += &Colorize::cyan("ᗣ").to_string();
+                    map += &Colorize::cyan("o").to_string();
                 }
                 else if *pink_ghost_pos == [x, y] {
-                    map += &Colorize::bright_magenta("ᗣ").to_string();
+                    map += &Colorize::bright_magenta("o").to_string();
                 }
                 else if y < self.coins.len() as u8 && self.coins[y as usize].contains(&x) {
                     map += "•";
@@ -231,10 +290,10 @@ fn prepare_game() {
     let obstacle_coordinates: Vec<Vec<u8>> = map_calc.calculate_map('#');
     let coin_coordinates: Vec<Vec<u8>> = map_calc.calculate_map('.');
 
-    let mut _red_ghost = Ghost { position: [21, 11], direction: 0, mortal: false };
-    let mut _orange_ghost = Ghost { position: [24, 11], direction: 0, mortal: false };
-    let mut _blue_ghost = Ghost { position: [27, 11], direction: 0, mortal: false };
-    let mut _pink_ghost = Ghost { position: [24, 12], direction: 0, mortal: false };
+    let mut _red_ghost = Ghost { position: [21, 11], direction: 0, mortal: false, active: false };
+    let mut _orange_ghost = Ghost { position: [24, 11], direction: 0, mortal: false, active: true };
+    let mut _blue_ghost = Ghost { position: [27, 11], direction: 0, mortal: false , active: false };
+    let mut _pink_ghost = Ghost { position: [24, 12], direction: 0, mortal: false, active: false  };
 
     let player_coordinates: [u8; 2] = [24, 18]; // [x, y]
 
@@ -256,19 +315,19 @@ fn prepare_game() {
     let mut last_frame = Instant::now();
 
     // Game sounds
-    let mut start_music = Audio::new();
-    let start_data = include_bytes!("../src/sounds/PacMan_Start_Music.mp3");
-    let temp_path = "start_music.mp3";
-    std::fs::write(temp_path, start_data).unwrap();
+    //let mut start_music = Audio::new();
+    //let start_data = include_bytes!("../src/sounds/PacMan_Start_Music.mp3");
+    //let temp_path = "start_music.mp3";
+    //std::fs::write(temp_path, start_data).unwrap();
 
     let coin_data = include_bytes!("../src/sounds/collect_coin.mp3");
     std::fs::write("coin_temp.mp3", coin_data).unwrap();
 
-    start_music.add("start", temp_path);
-    start_music.play("start");
+    //start_music.add("start", temp_path);
+    //start_music.play("start");
     game.draw(&_red_ghost.position, &_orange_ghost.position, &_blue_ghost.position, &_pink_ghost.position);
-    start_music.wait();
-    std::fs::remove_file(temp_path).unwrap();
+    //start_music.wait();
+    //std::fs::remove_file(temp_path).unwrap();
 
     loop {
         if event::poll(Duration::from_millis(1)).expect("Something went wrong.") {
@@ -319,6 +378,9 @@ fn prepare_game() {
 fn main() {
     prepare_game();
 }
+
+
+// I love writing in Rust because fighting with the compiler is the only form of social interaction I get.
 
 
 
