@@ -11,15 +11,16 @@ use rand::Rng;
 use rusty_audio::Audio;
 
 
-struct Game {
+struct Game<'a> {
     map_size: [u8; 2],
     obstacles: Vec<Vec<u8>>,
     coins: Vec<Vec<u8>>,
     is_finished: bool,
     speed_compensation: bool,
-    _player: Player
+    _player: &'a mut Player
 }
 
+#[derive(Clone)]
 struct Player {
     position: [u8; 2], // x y
     current_direction: u8,
@@ -54,6 +55,13 @@ fn check_position(cur_pos: [u8; 2], obstacles: Vec<Vec<u8>>) -> bool {
 
 
 impl Ghost {
+
+    fn default(&mut self) {
+        self.position = [21, 11];
+        self.direction = 0;
+        self.mortal = false;
+        self.active = false;
+    }
     fn move_ghost(&mut self, obstacles: &Vec<Vec<u8>>) {
         /*
         Structure:
@@ -147,6 +155,12 @@ impl MapCalculator {
 
 
 impl Player {
+    fn default(&mut self) {
+        self.position = [24, 18];
+        self.direction_queue = 1;
+        self.current_direction = 1;
+    }
+
     fn queue_checker(&mut self, obstacles: &Vec<Vec<u8>>) {
         if !(self.position[0] % 2 == 0) { return; }
         let direction: u8 = self.direction_queue;
@@ -193,7 +207,12 @@ impl Player {
     }
 }
 
-impl Game {
+impl Game<'_> {
+    fn default(&mut self, obstacle_coordinates: Vec<Vec<u8>>, coin_coordinates: Vec<Vec<u8>>) {
+        self.obstacles = obstacle_coordinates;
+        self.coins = coin_coordinates;
+    }
+
     fn draw(&mut self, red_ghost_pos: &[u8; 2], orange_ghost_pos: &[u8; 2], blue_ghost_pos: &[u8; 2], pink_ghost_pos: &[u8; 2],) {
         let mut map : String = Default::default();
         let mut coin_counter: u8 = 0;
@@ -272,6 +291,7 @@ fn prepare_game() {
         }
         max_width
     }
+
     let map_arr: Vec<String> = vec![
         String::from("#################################################"),
         String::from("# . . . . . . . . . . . # . . . . . . . . . . . #"),
@@ -320,11 +340,11 @@ fn prepare_game() {
 
     let mut game = Game {
         map_size: [calculate_max_map_width(map_arr.clone()), map_arr.len() as u8],
-        obstacles: obstacle_coordinates,
-        coins: coin_coordinates,
+        obstacles: obstacle_coordinates.clone(),
+        coins: coin_coordinates.clone(),
         is_finished: false,
         speed_compensation: true,
-        _player: player
+        _player: &mut player
     };
 
     enable_raw_mode().expect("Could not enable raw mode.");
@@ -372,6 +392,7 @@ fn prepare_game() {
         }
 
         if last_frame.elapsed() >= frame_duration {
+            let mut remove_heart: bool = false;
             game._player.move_player(&game.obstacles);
             game._player.queue_checker(&game.obstacles);
             game._player.check_position(&mut game.coins);
@@ -379,10 +400,19 @@ fn prepare_game() {
             _orange_ghost.move_ghost(&game.obstacles);
             _blue_ghost.move_ghost(&game.obstacles);
             _pink_ghost.move_ghost(&game.obstacles);
-            if _red_ghost.position == game._player.position { game._player.hearts -= 1 }
-            if _orange_ghost.position == game._player.position { game._player.hearts -= 1 }
-            if _blue_ghost.position == game._player.position { game._player.hearts -= 1 }
-            if _pink_ghost.position == game._player.position { game._player.hearts -= 1 }
+            if _red_ghost.position == game._player.position { remove_heart = true }
+            if _orange_ghost.position == game._player.position { remove_heart = true }
+            if _blue_ghost.position == game._player.position { remove_heart = true }
+            if _pink_ghost.position == game._player.position { remove_heart = true }
+            if remove_heart {
+                game.default(obstacle_coordinates.clone(), coin_coordinates.clone());
+                _red_ghost.default();
+                _orange_ghost.default();
+                _blue_ghost.default();
+                _pink_ghost.default();
+                game._player.hearts -= 1;
+                game._player.default();
+            }
             if game._player.hearts == 0 {
                 game.game_over();
                 return
