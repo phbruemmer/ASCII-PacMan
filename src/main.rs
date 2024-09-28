@@ -1,7 +1,5 @@
 use std::{io, thread};
 use std::io::Write;
-use std::pin::pin;
-// use rand::Rng;
 use crossterm::{cursor, event::{self, Event, KeyCode}, terminal::{disable_raw_mode, enable_raw_mode}, ExecutableCommand};
 use std::time::{Duration, Instant};
 use crossterm::event::KeyEventKind;
@@ -208,9 +206,8 @@ impl Player {
 }
 
 impl Game<'_> {
-    fn default(&mut self, obstacle_coordinates: Vec<Vec<u8>>, coin_coordinates: Vec<Vec<u8>>) {
+    fn default(&mut self, obstacle_coordinates: Vec<Vec<u8>>) {
         self.obstacles = obstacle_coordinates;
-        self.coins = coin_coordinates;
     }
 
     fn draw(&mut self, red_ghost_pos: &[u8; 2], orange_ghost_pos: &[u8; 2], blue_ghost_pos: &[u8; 2], pink_ghost_pos: &[u8; 2],) {
@@ -405,7 +402,7 @@ fn prepare_game() {
             if _blue_ghost.position == game._player.position { remove_heart = true }
             if _pink_ghost.position == game._player.position { remove_heart = true }
             if remove_heart {
-                game.default(obstacle_coordinates.clone(), coin_coordinates.clone());
+                game.default(obstacle_coordinates.clone());
                 _red_ghost.default();
                 _orange_ghost.default();
                 _blue_ghost.default();
