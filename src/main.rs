@@ -350,19 +350,33 @@ fn prepare_game() {
     let mut last_frame = Instant::now();
 
     // Game sounds
-    //let mut start_music = Audio::new();
-    //let start_data = include_bytes!("../src/sounds/PacMan_Start_Music.mp3");
-    //let temp_path = "start_music.mp3";
-    //std::fs::write(temp_path, start_data).unwrap();
+    let mut start_music = Audio::new();
+    let start_data = include_bytes!("../src/sounds/PacMan_Start_Music.mp3");
+    std::fs::write("start_music.mp3", start_data).unwrap();
 
     let coin_data = include_bytes!("../src/sounds/collect_coin.mp3");
     std::fs::write("coin_temp.mp3", coin_data).unwrap();
 
-    //start_music.add("start", temp_path);
-    //start_music.play("start");
+    let ghost_sound_data = include_bytes!("../src/sounds/ghost_move.mp3");
+    std::fs::write("ghost_move.mp3", ghost_sound_data).unwrap();
+
+    let death_sound_data = include_bytes!("../src/sounds/PacMan_Death.mp3");
+    std::fs::write("PacMan_Death.mp3", death_sound_data).unwrap();
+
+    start_music.add("start", "start_music.mp3");
+    start_music.play("start");
     game.draw(&_red_ghost.position, &_orange_ghost.position, &_blue_ghost.position, &_pink_ghost.position);
-    //start_music.wait();
-    //std::fs::remove_file(temp_path).unwrap();
+    start_music.wait();
+    std::fs::remove_file("start_music.mp3").unwrap();
+
+    thread::spawn( move || {
+        loop {
+            let mut ghost_sound = Audio::new();
+            ghost_sound.add("ghost", "ghost_move.mp3");
+            ghost_sound.play("ghost");
+            ghost_sound.wait();
+        }
+    });
 
     loop {
         if event::poll(Duration::from_millis(1)).expect("Something went wrong.") {
@@ -402,6 +416,10 @@ fn prepare_game() {
             if _blue_ghost.position == game._player.position { remove_heart = true }
             if _pink_ghost.position == game._player.position { remove_heart = true }
             if remove_heart {
+                let mut death_sound = Audio::new();
+                death_sound.add("death", "PacMan_Death.mp3");
+                death_sound.play("death");
+                death_sound.wait();
                 game.default(obstacle_coordinates.clone());
                 _red_ghost.default();
                 _orange_ghost.default();
@@ -424,8 +442,9 @@ fn prepare_game() {
         }
     }
 
-    disable_raw_mode().expect("Could not disable raw mode.");
+    disable_raw_mode().unwrap();
     std::fs::remove_file("coin_temp.mp3").unwrap();
+    std::fs::remove_file("ghost_move.mp3").unwrap();
 }
 
 fn main() {
