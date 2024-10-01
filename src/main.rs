@@ -444,10 +444,6 @@ fn main() {
 }
 
 
-// I love writing in Rust because fighting with the compiler is the only form of social interaction I get.
-
-
-
 /*
 Ghost starting coordinates
 
