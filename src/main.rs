@@ -61,14 +61,6 @@ impl Ghost {
         self.active = false;
     }
     fn move_ghost(&mut self, obstacles: &Vec<Vec<u8>>) {
-        /*
-        Structure:
-         - Checks direction (0 - 3) 0 -> up (w); 1 -> left (a); 2 -> down (s); 3 -> right (d)
-         - Check whether the next object (y-axis) is an obstacle (or) check whether there is an obstacle 2 positions ahead (x-axis).
-            - If no obstacle was found: check whether the ghost can change direction or not
-                - If changing the direction is possible: request direction change (not forced)
-            - else: change direction
-        */
         let random_value: u8 = random(0, 3);
 
         match self.direction {
