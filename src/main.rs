@@ -24,6 +24,7 @@ struct Player {
     current_direction: u8,
     direction_queue: u8, // 0: w; 1: a; 2: s; 3: d
     hearts: u8,
+    points: u16,
     frames: u32,
 }
 
@@ -187,6 +188,7 @@ impl Player {
         coins[y].retain(|&coin_x| coin_x != x as u8);
 
         if coins[y].len() < initial_length {
+            self.points += 10;
             thread::spawn( || {
                 let mut coin_sound = Audio::new();
                 coin_sound.add("coin", "coin_temp.mp3");
@@ -237,7 +239,9 @@ impl Game<'_> {
             }
             map += "\n";
         }
-        println!("{}", map);
+        print!("{}", map);
+        println!("Hearts: {}", self._player.hearts );
+        println!("Points: {}", self._player.points);
         if coin_counter == 0 { self.is_finished = true; }
         stdout.flush().unwrap();
     }
@@ -318,6 +322,7 @@ fn prepare_game() {
         position: player_coordinates,
         current_direction: 1,
         direction_queue: 1,
+        points: 0,
         hearts: 3,
         frames: 0,
     };
